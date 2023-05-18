@@ -558,7 +558,7 @@ def load_audio_from_memory(data, sr=22050, mono=True, offset=0.0, duration=None,
                 y = audio.to_mono(y)
 
         if sr is not None:
-            y = audio.resample(y, sr_native, sr, res_type=res_type)
+            y = audio.resample(y, orig_sr=sr_native, target_sr=sr, res_type=res_type)
 
         else:
             sr = sr_native
