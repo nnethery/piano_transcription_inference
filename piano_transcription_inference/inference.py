@@ -61,7 +61,7 @@ class PianoTranscription(object):
         else:
             print('Using CPU.')
 
-    def transcribe(self, audio, midi_path):
+    def transcribe(self, audio, midi_path, progress_callback=None, midi_buf=None):
         """Transcribe an audio recording.
 
         Args:
@@ -86,7 +86,7 @@ class PianoTranscription(object):
         """(N, segment_samples)"""
 
         # Forward
-        output_dict = forward(self.model, segments, batch_size=1)
+        output_dict = forward(self.model, segments, batch_size=1, progress_callback=progress_callback)
         """{'reg_onset_output': (N, segment_frames, classes_num), ...}"""
 
         # Deframe to original length
@@ -114,6 +114,10 @@ class PianoTranscription(object):
             write_events_to_midi(start_time=0, note_events=est_note_events, 
                 pedal_events=est_pedal_events, midi_path=midi_path)
             print('Write out to {}'.format(midi_path))
+        else:
+            write_events_to_midi(start_time=0, note_events=est_note_events, 
+                pedal_events=est_pedal_events, midi_path=midi_buf)
+            print('Wrote midi buffer')
 
         transcribed_dict = {
             'output_dict': output_dict, 

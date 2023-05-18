@@ -3,6 +3,9 @@ import numpy as np
 import audioread
 import librosa
 from mido import MidiFile
+import soundfile as sf
+from io import BytesIO
+from librosa.core import audio
 
 from .piano_vad import (note_detection_with_onset_offset_regress, 
     pedal_detection_with_onset_offset_regress)
@@ -94,7 +97,7 @@ def write_events_to_midi(start_time, note_events, pedal_events, midi_path):
         {'midi_note': 51, 'onset_time': 696.63544, 'offset_time': 696.9948, 'velocity': 44}, 
         {'midi_note': 58, 'onset_time': 696.99585, 'offset_time': 697.18646, 'velocity': 50}
         ...]
-      midi_path: str
+      midi_path: str | io.BytesIO
     """
     from mido import Message, MidiFile, MidiTrack, MetaMessage
     
@@ -154,7 +157,10 @@ def write_events_to_midi(start_time, note_events, pedal_events, midi_path):
     track1.append(MetaMessage('end_of_track', time=1))
     midi_file.tracks.append(track1)
 
-    midi_file.save(midi_path)
+    if type(midi_path) is str:
+        midi_file.save(midi_path)
+    else:
+        midi_file.save(file=midi_path)
 
 
 class RegressionPostProcessor(object):
@@ -496,6 +502,71 @@ class RegressionPostProcessor(object):
                 'offset_time': pedal_on_offs[i, 1]})
         
         return pedal_events
+
+
+def load_audio_from_memory(data, sr=22050, mono=True, offset=0.0, duration=None,
+    dtype=np.float32, res_type='kaiser_best'):
+    """Load audio. This function reads raw bytes from an audio file in memory. No ffmpeg backend."""
+    
+    y = []
+    with sf.SoundFile(BytesIO(data), 'r') as f:
+        sr_native = f.samplerate
+        n_channels = f.channels
+
+        s_start = int(np.round(sr_native * offset)) * n_channels
+
+        if duration is None:
+            s_end = np.inf
+        else:
+            s_end = s_start + (int(np.round(sr_native * duration))
+                               * n_channels)
+
+        n = 0
+        audio_data = f.read(dtype=dtype)
+
+        for frame in audio_data:
+            frame = audio.util.buf_to_float(frame, dtype=dtype)
+            n_prev = n
+            n = n + len(frame)
+
+            if n < s_start:
+                # offset is after the current frame
+                # keep reading
+                continue
+
+            if s_end < n_prev:
+                # we're off the end.  stop reading
+                break
+
+            if s_end < n:
+                # the end is in this frame.  crop.
+                frame = frame[:s_end - n_prev]
+
+            if n_prev <= s_start <= n:
+                # beginning is in this frame
+                frame = frame[(s_start - n_prev):]
+
+            # tack on the current frame
+            y.append(frame)
+
+    if y:
+        y = np.concatenate(y)
+
+        if n_channels > 1:
+            y = y.reshape((-1, n_channels)).T
+            if mono:
+                y = audio.to_mono(y)
+
+        if sr is not None:
+            y = audio.resample(y, sr_native, sr, res_type=res_type)
+
+        else:
+            sr = sr_native
+
+    # Final cleanup for dtype and contiguity
+    y = np.ascontiguousarray(y, dtype=dtype)
+
+    return (y, sr)
 
 
 def load_audio(path, sr=22050, mono=True, offset=0.0, duration=None,

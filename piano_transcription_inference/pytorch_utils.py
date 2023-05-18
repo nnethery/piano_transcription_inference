@@ -24,13 +24,15 @@ def append_to_dict(dict, key, value):
         dict[key] = [value]
  
 
-def forward(model, x, batch_size):
+def forward(model, x, batch_size, progress_callback=None):
     """Forward data to model in mini-batch. 
     
     Args: 
       model: object
       x: (N, segment_samples)
       batch_size: int
+      progress_callback: callable, optional function to track progress. 
+        Should accept two integer arguments - current progress and total.
 
     Returns:
       output_dict: dict, e.g. {
@@ -46,7 +48,9 @@ def forward(model, x, batch_size):
     total_segments = int(np.ceil(len(x) / batch_size))
     
     while True:
-        print('Segment {} / {}'.format(pointer, total_segments))
+        print('Segment {} / {}'.format(pointer + 1, total_segments + 1))
+        if progress_callback is not None:
+            progress_callback(pointer, total_segments)
         if pointer >= len(x):
             break
 
