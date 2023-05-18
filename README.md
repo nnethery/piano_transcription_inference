@@ -1,3 +1,14 @@
+## Update: Hosting Model on Hugging Face Spaces
+
+I'm excited to share some code changes to support hosting this model on a Hugging Face space. You can visit the space [here](https://huggingface.co/spaces/nnethery/ByteDance-Piano-Transcription) to check out the model. 
+
+Updates overview:
+- Now loading byte stream .WAV files in `librosa` since audio is uploaded rather than read from the filesystem
+- Can publish transcription progress updates from the model's forward pass to a callback for the Spaces frontend
+- Writing the MIDI data to memory instead of the filesystem
+
+Happy transcribing!
+
 # Piano transcription inference
 
 This toolbox is a piano transcription inference package that can be easily installed. Users can transcribe their favorite piano recordings to MIDI files after installation. To see how the piano transcription system is trained, please visit: https://github.com/bytedance/piano_transcription.
