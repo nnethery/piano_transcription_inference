@@ -522,10 +522,11 @@ def load_audio_from_memory(data, sr=22050, mono=True, offset=0.0, duration=None,
                                * n_channels)
 
         n = 0
-        audio_data = f.read(dtype=dtype)
+        
+        for frame in f.blocks(blocksize=2048, dtype=dtype):
+            if frame.ndim > 1:
+                frame = frame.reshape((frame.shape[0] * frame.shape[1]))
 
-        for frame in audio_data:
-            frame = audio.util.buf_to_float(frame, dtype=dtype)
             n_prev = n
             n = n + len(frame)
 
